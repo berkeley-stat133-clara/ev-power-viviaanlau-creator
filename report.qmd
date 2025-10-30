@@ -1,6 +1,6 @@
 ---
 title: "EV Power - Lab 4 Project Report"
-format: typst
+format: pdf
 ---
 
 # Example Solution 1
@@ -8,6 +8,7 @@ format: typst
 ## **Part 0: libraries**
 
 ```{r}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
 install.packages("tigris")
 install.packages("viridis")
 library(tidyverse)
@@ -16,14 +17,15 @@ library(readr)
 library(sf)
 library(tigris)
 library(viridis)
-renew_2021 <- read_csv("ev-power-viviaanlau-creator/data/renew-use-2021.csv")
-renew_2022 <- read_csv("ev-power-viviaanlau-creator/data/renew-use-2022.csv")
-renew_2023 <- read_csv("ev-power-viviaanlau-creator/data/renew-use-2023.csv")
-avg_price <- read_csv("ev-power-viviaanlau-creator/data/av-energy-price-2021-2023.csv")
-total_2021 <- read_csv("ev-power-viviaanlau-creator/data/total-use-2021.csv")
-total_2022 <- read_csv("ev-power-viviaanlau-creator/data/total-use-2022.csv")
-total_2023 <- read_csv("ev-power-viviaanlau-creator/data/total-use-2023.csv")
-registration <- read_csv("ev-power-viviaanlau-creator/data/ev-registrations-by-state-2023.csv")
+setwd("/Users/vivianlau/Documents/stat133/project4/ev-power-viviaanlau-creator")
+renew_2021 <- read_csv("data/renew-use-2021.csv")
+renew_2022 <- read_csv("data/renew-use-2022.csv")
+renew_2023 <- read_csv("data/renew-use-2023.csv")
+avg_price <- read_csv("data/av-energy-price-2021-2023.csv")
+total_2021 <- read_csv("data/total-use-2021.csv")
+total_2022 <- read_csv("data/total-use-2022.csv")
+total_2023 <- read_csv("data/total-use-2023.csv")
+registration <- read_csv("data/ev-registrations-by-state-2023.csv")
 ```
 
 ## **Part 1:** **Defining Research Question**
@@ -158,8 +160,10 @@ ggplot() +
     legend.position = "right"
   )
 
-ggsave("map_plot.png", width = 100, height = 60)
 ```
 
-Part 5:
-Based off the map, the first thing I noticed is that more states on the coast have higher EV numbers. States with more established renewable energy sources also have higher adoption of usage and EV adoption. This shows that there is a positive relationship between EV registration and renewable energy usage.
+```{r}
+##Part 5:
+#Based off the map, the first thing I noticed is that more states on the coast have higher EV numbers. States with more established renewable energy sources also have higher adoption of usage and EV adoption. This shows that there is a positive relationship between EV registration and renewable energy usage.
+
+```
