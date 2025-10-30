@@ -8,27 +8,158 @@ format: typst
 ## **Part 0: libraries**
 
 ```{r}
-
+install.packages("tigris")
+install.packages("viridis")
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(sf)
+library(tigris)
+library(viridis)
+renew_2021 <- read_csv("ev-power-viviaanlau-creator/data/renew-use-2021.csv")
+renew_2022 <- read_csv("ev-power-viviaanlau-creator/data/renew-use-2022.csv")
+renew_2023 <- read_csv("ev-power-viviaanlau-creator/data/renew-use-2023.csv")
+avg_price <- read_csv("ev-power-viviaanlau-creator/data/av-energy-price-2021-2023.csv")
+total_2021 <- read_csv("ev-power-viviaanlau-creator/data/total-use-2021.csv")
+total_2022 <- read_csv("ev-power-viviaanlau-creator/data/total-use-2022.csv")
+total_2023 <- read_csv("ev-power-viviaanlau-creator/data/total-use-2023.csv")
+registration <- read_csv("ev-power-viviaanlau-creator/data/ev-registrations-by-state-2023.csv")
 ```
 
 ## **Part 1:** **Defining Research Question**
 
-Chosen Question:
+Chosen Question: Are there higher EV registrations in states with more renewable energy use? Before analyzing, I believe that states that get most energy from renewable sources wll have more EV registrations because they have higher access, making it more widespread.
 
 ## **Part 2: Data Preparation and Cleaning**
 
 ```{r}
+renew_2021 <- renew_2021 |> rename(state = State, renewable_use = Renewable_Use_2021)
+renew_2022 <- renew_2022 |> rename(state = State, renewable_use = Renewable_Use_2022)
+renew_2023 <- renew_2023 |> rename(state = State, renewable_use = Renewable_Use_2023)
+
+renew_2021$year <- 2021
+renew_2022$year <- 2022
+renew_2023$year <- 2023
+
+renew_all <- bind_rows(renew_2021, renew_2022, renew_2023)
+renew_all$state <- str_to_title(renew_all$state)
+
+total21_longer <- total_2021 |>
+  pivot_longer(
+    cols = -Energy_Source,
+    names_to = "state",
+    values_to = "energy_use"
+  ) |>
+  group_by(state) |>
+  summarize(total_energy_use = sum(energy_use, na.rm = TRUE)) |>
+  mutate(year = 2021)
+
+total22_longer <- total_2022 |>
+  pivot_longer(
+    cols = -Energy_Source,
+    names_to = "state",
+    values_to = "energy_use"
+  ) |>
+  group_by(state) |>
+  summarize(total_energy_use = sum(energy_use, na.rm = TRUE)) |>
+  mutate(year = 2022)
+
+total23_longer <- total_2023 |>
+  pivot_longer(
+    cols = -Energy_Source,
+    names_to = "state",
+    values_to = "energy_use"
+  ) |>
+  group_by(state) |>
+  summarize(total_energy_use = sum(energy_use, na.rm = TRUE)) |>
+  mutate(year = 2023)
+
+total_all <- bind_rows(total21_longer, total22_longer, total23_longer)
+total_all$state <- str_to_title(total_all$state)
+
+ev <- registration |>
+  rename(
+    state = `electric vehicle registrations_by_state (2023)`,
+    ev_registrations = `...2`
+  )
+
+ev$state <- str_to_title(ev$state)
+
+
+head(renew_all)
+head(total_all)
+head(ev)
 
 ```
 
 ## **Part 3: Joining / Pivoting Datasets for Analysis**
 
 ```{r}
+state_find <- tibble(
+  state = str_to_title(state.abb),
+  full_state = state.name
+)
+
+energy_combined <- renew_all |>
+  left_join(total_all, by = c("state", "year")) |>
+  mutate(
+    renewable_use = as.numeric(gsub("[^0-9.]", "", renewable_use)),
+    total_energy_use = as.numeric(gsub("[^0-9.]", "", total_energy_use)),
+    pct_renew = renewable_use / total_energy_use * 100        
+  ) |>
+  left_join(state_find, by = "state") |>
+  mutate(state = full_state) |>
+  select(-full_state)
+
+ev_energy_2023 <- energy_combined |>
+  filter(year == 2023) |>
+  left_join(ev, by = "state") |>
+  mutate(
+    ev_registrations = as.numeric(gsub("[^0-9.]", "", ev_registrations)),
+    ev_per_energy = ev_registrations / total_energy_use
+  )
+
+head(energy_combined)
+head(ev_energy_2023)
+
+
+# Check
+sum(!is.na(ev_energy_2023$ev_registrations))
+
+# Summary statistics
+summary(ev_energy_2023$pct_renew)
+summary(ev_energy_2023$ev_registrations)
+
+cor(ev_energy_2023$pct_renew, ev_energy_2023$ev_registrations, use = "complete.obs")
 
 ```
 
 ## **Part 4: Mapping Visualization**
 
 ```{r}
+states_sf <- states(cb = TRUE) |> st_as_sf()
 
+map_df <- left_join(states_sf, ev_energy_2023, by = c("NAME" = "state"))
+
+centers <- st_centroid(map_df)
+
+ggplot() +
+  geom_sf(data = map_df, aes(fill = pct_renew), color = "grey90", size = 0.2) +
+  geom_sf(data = centers, aes(size = ev_registrations), color = "black", alpha = 0.2) +
+  scale_fill_viridis(option = "plasma", name = "Renewable %") +
+  scale_size(range = c(1, 5), name = "EV Registrations") +
+  labs(title = "Renewable Energy and EV Adoption by State (2023)") +
+  coord_sf(expand = FALSE) +
+  theme_void(base_size = 20) +
+  theme(
+    plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 6),
+    legend.position = "right"
+  )
+
+ggsave("map_plot.png", width = 100, height = 60)
 ```
+
+Part 5:
+Based off the map, the first thing I noticed is that more states on the coast have higher EV numbers. States with more established renewable energy sources also have higher adoption of usage and EV adoption. This shows that there is a positive relationship between EV registration and renewable energy usage.
